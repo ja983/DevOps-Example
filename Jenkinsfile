@@ -45,3 +45,26 @@ node {
         sh "docker push   vickeyyvickey/myapplication"
   }
 }
+
+pipeline {
+    agent any
+
+    tools {
+        jdk 'jdk8'
+        maven 'maven-3.5.2'
+    }
+
+    stages {
+        stage('Clone Repo') {
+            steps {
+                git 'https://github.com/vikas4cloud/DevOps-Example.git'
+            }
+        }
+
+        stage('Build Project') {
+            steps {
+                sh 'mvn clean install'
+            }
+        }
+    }
+}
