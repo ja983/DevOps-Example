@@ -2,6 +2,7 @@ node {
     // reference to maven
     // ** NOTE: This 'maven-3.5.2' Maven tool must be configured in the Jenkins Global Configuration.   
     def mvnHome = tool 'maven-3.5.2'
+	def javaHome = tool 'JDK8'  // Replace 'JDK8' with your configured JDK name
 
     // holds reference to docker image
     def dockerImage
@@ -11,16 +12,19 @@ node {
     
     stage('Clone Repo') { // for display purposes
       // Get some code from a GitHub repository
-      git 'https://github.com/vikas4cloud/DevOps-Example.git'
+      git 'https://github.com/ja983/DevOps-Example.git'
       // Get the Maven tool.
       // ** NOTE: This 'maven-3.5.2' Maven tool must be configured
       // **       in the global configuration.           
       mvnHome = tool 'maven-3.5.2'
+	  javaHome = tool 'JDK8'
     }    
   
     stage('Build Project') {
       // build project via maven
-      sh "'${mvnHome}/bin/mvn' clean install"
+	   withEnv(["JAVA_HOME=${javaHome}", "PATH+=${javaHome}/bin"]) {	
+           sh "'${mvnHome}/bin/mvn' clean install"
+	   }	   
     }
 		
     stage('Build Docker Image') {
@@ -31,17 +35,23 @@ node {
     stage('Deploy Docker Image and login'){
       
       echo "Docker Image Tag Name: ${dockerImageTag}"
-	  
-        sh "docker images"
+	    sh "docker images"
         sh "docker login -u vickeyyvickey -p Hello@123" // put PWD
 	
 }
     stage('Docker push'){
-       // docker images | awk '{print $3}' | awk 'NR==2'
-	// sh "docker images | awk '{print $3}' | awk 'NR==2'"
-	//sh echo "Enter the docker lattest imageID"
-	//sh "read imageid"
-	   sh "docker tag 90cc3c109088   vickeyyvickey/myapplication" //must change your name and tag no
-        sh "docker push   vickeyyvickey/myapplication"
+       // Extract the image ID for the devopsexample:${BUILD_NUMBER} image
+        def imageId = sh(script: "docker images --format '{{.ID}}' devopsexample:${env.BUILD_NUMBER}", returnStdout: true).trim()
+        def repoName = "vickeyyvickey/myapplication"
+
+	   // Tag the image
+        sh "docker tag ${imageId} ${repoName}"
+        
+       // Push to Docker Hub
+        sh "docker push ${repoName}"
   }
-}
+
+	stage('Run Application') {
+       sh "docker run -d -p 2222:2222 vickeyyvickey/myapplication"
+    }
+}	
